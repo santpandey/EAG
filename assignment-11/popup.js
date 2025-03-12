@@ -64,23 +64,6 @@ chrome.runtime.sendMessage({
     }
   });
   
-  // Listen for messages from background script
-  //chrome.runtime.onMessage.addListener(function(message) {
-    //if (message.action === 'searchComplete') {
-      // Hide loader
-      //loader.style.display = 'none';
-      
-      //if (message.success) {
-        // Update UI with search results
-        //updateResults(message.data);
-        // Show results
-        //results.style.display = 'block';
-      //} else {
-        // Show error
-        //error.style.display = 'block';
-      //}
-    //}
-  //});
   
   // Function to update the UI with search results
   function updateResults(data) {
