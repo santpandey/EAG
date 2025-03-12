@@ -25,60 +25,69 @@ document.addEventListener('DOMContentLoaded', function() {
   searchBtn.addEventListener('click', function() {
     const query = productInput.value.trim();
     
-    if (query === '') {
-      alert('Please enter a product name or URL');
-      return;
-    }
-    
-    // Show loader and hide results/error
-    loader.style.display = 'flex';
-    results.style.display = 'none';
-    error.style.display = 'none';
-    
-    // Send message to background script to start the search
-    chrome.runtime.sendMessage({
-      action: 'searchProduct',
-      query: query
-    }, function(response) {
-      // Hide loader
-      loader.style.display = 'none';
+    if (query) {
+      // Show loader, hide results and error
+      loader.style.display = 'flex';
+      results.style.display = 'none';
+      error.style.display = 'none';
       
-      if (response && response.success) {
-        // Update UI with results
-        updateResults(response.data);
-        results.style.display = 'block';
-      } else {
-        // Show error message
-        error.style.display = 'block';
-      }
-    });
+      // Send message to background script to start search
+      //chrome.runtime.sendMessage({
+        //action: 'search',
+        //query: query
+      //});
+      // Send message to background script to start search
+chrome.runtime.sendMessage({
+  action: 'searchProduct',
+  query: query
+}, function(response) {
+  // Hide loader
+  loader.style.display = 'none';
+  
+  if (response && response.success) {
+    // Update UI with search results
+    updateResults(response.data);
+    // Show results
+    results.style.display = 'block';
+  } else {
+    // Show error
+    error.style.display = 'block';
+  }
+});
+    }
   });
   
-  // Prevent popup from closing when clicking on links
-  flipkartLink.addEventListener('click', function(e) {
-    e.preventDefault();
-    chrome.tabs.create({ url: this.href });
-    return false;
+  // Enter key press event for search input
+  productInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      searchBtn.click();
+    }
   });
   
-  amazonLink.addEventListener('click', function(e) {
-    e.preventDefault();
-    chrome.tabs.create({ url: this.href });
-    return false;
-  });
-  
-  bestPriceLink.addEventListener('click', function(e) {
-    e.preventDefault();
-    chrome.tabs.create({ url: this.href });
-    return false;
-  });
+  // Listen for messages from background script
+  //chrome.runtime.onMessage.addListener(function(message) {
+    //if (message.action === 'searchComplete') {
+      // Hide loader
+      //loader.style.display = 'none';
+      
+      //if (message.success) {
+        // Update UI with search results
+        //updateResults(message.data);
+        // Show results
+        //results.style.display = 'block';
+      //} else {
+        // Show error
+        //error.style.display = 'block';
+      //}
+    //}
+  //});
   
   // Function to update the UI with search results
   function updateResults(data) {
     // Update Flipkart data
     if (data.flipkart) {
-      flipkartName.textContent = data.flipkart.name || 'Product Name';
-      flipkartPrice.textContent = data.flipkart.price || '₹0.00';
+      flipkartName.textContent = data.flipkart.name || 'Product not found';
+      flipkartPrice.textContent = data.flipkart.price || 'N/A';
       
       // Handle Flipkart URL - add base URL if needed
       if (data.flipkart.url) {
@@ -98,8 +107,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Update Amazon data
     if (data.amazon) {
-      amazonName.textContent = data.amazon.name || 'Product Name';
-      amazonPrice.textContent = data.amazon.price || '₹0.00';
+      amazonName.textContent = data.amazon.name || 'Product not found';
+      amazonPrice.textContent = data.amazon.price || 'N/A';
       
       // Handle Amazon URL - add base URL if needed
       if (data.amazon.url) {
@@ -118,98 +127,55 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Determine best price
-    let bestPrice = null;
+    let flipkartPriceValue = 0;
+    let amazonPriceValue = 0;
     let bestPriceStore = '';
-    let bestPriceUrl = '';
+    let bestPriceAmount = 0;
+
     
-    if (data.flipkart && data.amazon) {
-      // Extract numeric values from price strings
-      const flipkartPriceValue = extractPriceValue(data.flipkart.price);
-      console.log("Flipkart price is "+flipkartPriceValue);
-      const amazonPriceValue = extractPriceValue(data.amazon.price);
-      console.log("Amazon price is "+amazonPriceValue);
-      
-      if (flipkartPriceValue !== null && amazonPriceValue !== null) {
-        if (flipkartPriceValue <= amazonPriceValue) {
-          bestPrice = data.flipkart.price;
-          bestPriceStore = 'Flipkart';
-          // Format Flipkart URL
-          if (data.flipkart.url) {
-            bestPriceUrl = data.flipkart.url.startsWith('http') 
-              ? data.flipkart.url 
-              : 'https://www.flipkart.com' + data.flipkart.url;
-          }
-        } else {
-          bestPrice = data.amazon.price;
-          bestPriceStore = 'Amazon';
-          // Format Amazon URL
-          if (data.amazon.url) {
-            bestPriceUrl = data.amazon.url.startsWith('http') 
-              ? data.amazon.url 
-              : 'https://www.amazon.in' + data.amazon.url;
-          }
-        }
-      } else if (flipkartPriceValue !== null) {
-        bestPrice = data.flipkart.price;
-        bestPriceStore = 'Flipkart';
-        // Format Flipkart URL
-        if (data.flipkart.url) {
-          bestPriceUrl = data.flipkart.url.startsWith('http') 
-            ? data.flipkart.url 
-            : 'https://www.flipkart.com' + data.flipkart.url;
-        }
-      } else if (amazonPriceValue !== null) {
-        bestPrice = data.amazon.price;
-        bestPriceStore = 'Amazon';
-        // Format Amazon URL
-        if (data.amazon.url) {
-          bestPriceUrl = data.amazon.url.startsWith('http') 
-            ? data.amazon.url 
-            : 'https://www.amazon.in' + data.amazon.url;
-        }
-      }
-    } else if (data.flipkart) {
-      bestPrice = data.flipkart.price;
-      bestPriceStore = 'Flipkart';
-      // Format Flipkart URL
-      if (data.flipkart.url) {
-        bestPriceUrl = data.flipkart.url.startsWith('http') 
-          ? data.flipkart.url 
-          : 'https://www.flipkart.com' + data.flipkart.url;
-      }
-    } else if (data.amazon) {
-      bestPrice = data.amazon.price;
-      bestPriceStore = 'Amazon';
-      // Format Amazon URL
-      if (data.amazon.url) {
-        bestPriceUrl = data.amazon.url.startsWith('http') 
-          ? data.amazon.url 
-          : 'https://www.amazon.in' + data.amazon.url;
-      }
+    // Extract Flipkart price
+    if (data.flipkart && data.flipkart.price) {
+      flipkartPriceValue = extractPriceValue(data.flipkart.price);
     }
     
-    console.log("Best price store:", bestPriceStore);
-    console.log("Best price URL:", bestPriceUrl);
+    // Extract Amazon price
+    if (data.amazon && data.amazon.price) {
+      amazonPriceValue = extractPriceValue(data.amazon.price);
+    }
+    
+    // Compare prices
+    if (flipkartPriceValue > 0 && amazonPriceValue > 0) {
+      // Both prices available
+      if (flipkartPriceValue <= amazonPriceValue) {
+        bestPriceStore = 'Flipkart';
+        bestPriceAmount = flipkartPriceValue;
+        bestPriceLink.href = flipkartLink.href;
+      } else {
+        bestPriceStore = 'Amazon';
+        bestPriceAmount = amazonPriceValue;
+        bestPriceLink.href = amazonLink.href;
+      }
+    } else if (flipkartPriceValue > 0) {
+      // Only Flipkart price available
+      bestPriceStore = 'Flipkart';
+      bestPriceAmount = flipkartPriceValue;
+      bestPriceLink.href = flipkartLink.href;
+    } else if (amazonPriceValue > 0) {
+      // Only Amazon price available
+      bestPriceStore = 'Amazon';
+      bestPriceAmount = amazonPriceValue;
+      bestPriceLink.href = amazonLink.href;
+    } else {
+      // No prices available
+      bestPriceStore = 'N/A';
+      bestPriceAmount = 0;
+      bestPriceLink.href = '#';
+    }
     
     // Update best price section
-    if (bestPrice) {
+    if (bestPriceStore !== 'N/A') {
       bestStore.textContent = bestPriceStore;
-      bestPriceValue.textContent = bestPrice;
-      
-      // Make sure the URL is valid before setting it
-      if (bestPriceUrl && bestPriceUrl !== '') {
-        bestPriceLink.href = bestPriceUrl;
-      } else {
-        // Fallback to the appropriate store URL if bestPriceUrl is empty
-        if (bestPriceStore === 'Flipkart') {
-          bestPriceLink.href = flipkartLink.href;
-        } else if (bestPriceStore === 'Amazon') {
-          bestPriceLink.href = amazonLink.href;
-        } else {
-          bestPriceLink.href = '#';
-        }
-      }
-      
+      bestPriceValue.textContent = bestPriceAmount.toFixed(2);
       document.getElementById('best-price').style.display = 'block';
     } else {
       document.getElementById('best-price').style.display = 'none';
@@ -218,15 +184,14 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Helper function to extract numeric price value from price string
   function extractPriceValue(priceString) {
-    if (!priceString) return null;
+    if (!priceString) return 0;
     
-    // Extract digits and decimal point
-    const matches = priceString.match(/[\d,]+(\.\d+)?/);
-    if (matches && matches[0]) {
-      // Remove commas and convert to number
-      return parseFloat(matches[0].replace(/,/g, ''));
-    }
+    // Remove currency symbols, commas, and other non-numeric characters except decimal point
+    const numericString = priceString.replace(/[^\d.]/g, '');
     
-    return null;
+    // Parse as float
+    const price = parseFloat(numericString);
+    
+    return isNaN(price) ? 0 : price;
   }
 });
