@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Song Information Finder</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Song Information Finder</h1>
+    
+    <div class="search-container">
+      <input type="text" id="songInput" placeholder="Enter song name...">
+      <button id="searchButton">Search</button>
+    </div>
+    
+    <div id="loadingIndicator" class="hidden">
+      <div class="spinner"></div>
+      <p>Searching for song information...</p>
+    </div>
+    
+    <div id="results" class="hidden">
+      <div class="result-section">
+        <h2>Artists Information</h2>
+        <div id="artistsInfo"></div>
+      </div>
+      
+      <div class="result-section">
+        <h2>Song Facts</h2>
+        <div id="songFacts"></div>
+      </div>
+      
+      <div class="result-section">
+        <h2>Instruments Used</h2>
+        <div id="instrumentsInfo"></div>
+      </div>
+      
+      <div class="result-section">
+        <h2>Song Visualization</h2>
+        <div id="imageContainer" class="hidden">
+          <img id="songImage" alt="Song visualization">
+          <button id="downloadButton" class="hidden">Download Image</button>
+        </div>
+        <div id="imageLoading" class="hidden">
+          <p>Generating image...</p>
+          <div class="spinner"></div>
+        </div>
+        <div id="imageError" class="hidden">
+          <p>Unable to generate image for this song.</p>
+        </div>
+      </div>
+      
+      <div class="result-section">
+        <h2>Sources</h2>
+        <div id="sources"></div>
+      </div>
+    </div>
+    
+    <div id="errorMessage" class="hidden">
+      <p>Sorry, we couldn't find information about this song. Please try another song or check your spelling.</p>
+    </div>
+  </div>
+  
+  <script src="utils.js"></script>
+  <script src="api-service.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
