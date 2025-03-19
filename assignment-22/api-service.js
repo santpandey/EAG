@@ -355,61 +355,70 @@ class ApiService {
    */
   static extractFactsFromSongFacts(doc) {
     try {
+      // Initialize an empty array for facts
       const facts = [];
+      
+      console.log("Extracting facts from SongFacts page");
 
-      // Find the songfacts section
-      const songfactsSection = Array.from(doc.querySelectorAll("h2")).find(
-        (h2) => h2.textContent.trim().toLowerCase() === "songfacts"
+      // Try multiple approaches to find facts
+      
+      // Approach 1: Find the songfacts section by heading
+      let foundFacts = false;
+      const headings = Array.from(doc.querySelectorAll("h1, h2, h3, h4"));
+      const songfactsSection = headings.find(
+        (h) => h.textContent.trim().toLowerCase().includes("songfact") || 
+               h.textContent.trim().toLowerCase().includes("song fact")
       );
 
       if (songfactsSection) {
-        // Get the list items following the Songfacts heading
-        let currentElement = songfactsSection.nextElementSibling;
+        console.log("Found songfacts section by heading");
+        foundFacts = this.extractFactsFromSection(songfactsSection, facts);
+      }
 
-        while (currentElement && currentElement.tagName !== "H2") {
-          if (currentElement.tagName === "UL") {
-            const listItems = currentElement.querySelectorAll("li");
-            listItems.forEach((item) => {
-              const factText = item.textContent.trim();
-              if (factText && factText.length > 10) {
-                facts.push(factText);
-              }
-            });
-          } else if (currentElement.tagName === "P") {
-            const paragraphText = currentElement.textContent.trim();
-            if (paragraphText && paragraphText.length > 10) {
-              // Split paragraphs into sentences
-              const sentences = paragraphText.split(/\.\s+/);
-              sentences.forEach((sentence) => {
-                if (sentence.length > 10) {
-                  facts.push(sentence.trim() + ".");
-                }
-              });
+      // Approach 2: Look for fact-list class
+      if (!foundFacts || facts.length === 0) {
+        const factList = doc.querySelector(".fact-list");
+        if (factList) {
+          console.log("Found fact-list class");
+          const listItems = factList.querySelectorAll("li");
+          listItems.forEach((item) => {
+            const factText = item.textContent.trim();
+            if (factText && factText.length > 10) {
+              facts.push(factText);
+              foundFacts = true;
             }
-          }
-
-          currentElement = currentElement.nextElementSibling;
+          });
         }
       }
 
-      // If no specific Songfacts section, try to get facts from the main content
-      if (facts.length === 0) {
+      // Approach 3: Try to get facts from the main content
+      if (!foundFacts || facts.length === 0) {
+        console.log("Trying to extract from main content");
         // Try different selectors for the main content
         const mainContent =
           doc.querySelector(".main-content") ||
           doc.querySelector(".content-main") ||
-          doc.querySelector("article");
+          doc.querySelector("article") ||
+          doc.querySelector(".content");
 
         if (mainContent) {
           const paragraphs = mainContent.querySelectorAll("p");
           paragraphs.forEach((paragraph) => {
             const paragraphText = paragraph.textContent.trim();
             if (paragraphText && paragraphText.length > 30) {
-              // Split paragraphs into sentences
+              // Skip paragraphs that look like metadata or navigation
+              if (paragraphText.toLowerCase().includes("copyright") || 
+                  paragraphText.toLowerCase().includes("all rights reserved") ||
+                  paragraphText.toLowerCase().includes("privacy policy")) {
+                return;
+              }
+              
+              // Split paragraphs into sentences for better readability
               const sentences = paragraphText.split(/\.\s+/);
               sentences.forEach((sentence) => {
-                if (sentence.length > 10) {
+                if (sentence.length > 15) {
                   facts.push(sentence.trim() + ".");
+                  foundFacts = true;
                 }
               });
             }
@@ -417,17 +426,27 @@ class ApiService {
         }
       }
 
-      // If still no facts, try to extract any text from the page that might be useful
-      if (facts.length === 0) {
+      // Approach 4: If still no facts, try to extract any text from the page that might be useful
+      if (!foundFacts || facts.length === 0) {
+        console.log("Trying to extract from any paragraphs");
         const allParagraphs = doc.querySelectorAll("p");
-        for (let i = 0; i < Math.min(5, allParagraphs.length); i++) {
+        for (let i = 0; i < Math.min(8, allParagraphs.length); i++) {
           const paragraphText = allParagraphs[i].textContent.trim();
           if (paragraphText && paragraphText.length > 30) {
+            // Skip paragraphs that look like metadata or navigation
+            if (paragraphText.toLowerCase().includes("copyright") || 
+                paragraphText.toLowerCase().includes("all rights reserved") ||
+                paragraphText.toLowerCase().includes("privacy policy")) {
+              continue;
+            }
+            
             facts.push(paragraphText);
+            foundFacts = true;
           }
         }
       }
 
+      // If we found facts, return them; otherwise, return a default message
       return facts.length > 0
         ? facts
         : ["No specific facts found on SongFacts."];
@@ -435,6 +454,71 @@ class ApiService {
       console.error("Error extracting facts from SongFacts:", error);
       return ["No specific facts found on SongFacts."];
     }
+  }
+
+  /**
+   * Helper method to extract facts from a section
+   * @param {Element} section - The section element to extract facts from
+   * @param {Array} facts - Array to add facts to
+   * @returns {boolean} - True if facts were found, false otherwise
+   */
+  static extractFactsFromSection(section, facts) {
+    let foundFacts = false;
+    let currentElement = section.nextElementSibling;
+
+    // Process elements until we hit another heading or run out of siblings
+    while (currentElement && 
+           !['H1', 'H2', 'H3', 'H4'].includes(currentElement.tagName)) {
+      
+      // Extract from lists
+      if (currentElement.tagName === "UL" || currentElement.tagName === "OL") {
+        const listItems = currentElement.querySelectorAll("li");
+        listItems.forEach((item) => {
+          const factText = item.textContent.trim();
+          if (factText && factText.length > 10) {
+            facts.push(factText);
+            foundFacts = true;
+          }
+        });
+      } 
+      // Extract from paragraphs
+      else if (currentElement.tagName === "P") {
+        const paragraphText = currentElement.textContent.trim();
+        if (paragraphText && paragraphText.length > 20) {
+          // Skip paragraphs that look like metadata
+          if (paragraphText.toLowerCase().includes("copyright") || 
+              paragraphText.toLowerCase().includes("all rights reserved")) {
+            currentElement = currentElement.nextElementSibling;
+            continue;
+          }
+          
+          // Split paragraphs into sentences
+          const sentences = paragraphText.split(/\.\s+/);
+          sentences.forEach((sentence) => {
+            if (sentence.length > 15) {
+              facts.push(sentence.trim() + ".");
+              foundFacts = true;
+            }
+          });
+        }
+      }
+      // Extract from divs that might contain text
+      else if (currentElement.tagName === "DIV") {
+        // Only process divs that don't have complex nested structures
+        if (!currentElement.querySelector("div, ul, ol, table")) {
+          const divText = currentElement.textContent.trim();
+          if (divText && divText.length > 30 && 
+              !divText.toLowerCase().includes("copyright")) {
+            facts.push(divText);
+            foundFacts = true;
+          }
+        }
+      }
+
+      currentElement = currentElement.nextElementSibling;
+    }
+
+    return foundFacts;
   }
 
   /**
