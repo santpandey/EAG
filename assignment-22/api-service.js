@@ -1,6 +1,6 @@
 /**
  * API Service for Song Information Finder
- * This file contains functions to interact with songfacts.com to get song information
+ * This file contains functions to interact with songfacts.com and Google to get song information
  */
 
 class ApiService {
@@ -20,8 +20,6 @@ class ApiService {
         success: songData.complete,
         basicInfo: songData.basicInfo || {
           title: songName,
-          musicDirector: "Unknown",
-          singers: ["Unknown"],
           releaseYear: "Unknown",
           album: "Unknown",
         },
@@ -46,8 +44,6 @@ class ApiService {
         error: error.message,
         basicInfo: {
           title: songName,
-          musicDirector: "Unknown",
-          singers: ["Unknown"],
           releaseYear: "Unknown",
           album: "Unknown",
         },
@@ -76,24 +72,28 @@ class ApiService {
   static async searchSongFacts(songName) {
     try {
       // Step 1: Search songfacts.com directly
-      const searchUrl = `https://www.songfacts.com/search/songs/${encodeURIComponent(songName)}`;
+      const searchUrl = `https://www.songfacts.com/search/songs/${encodeURIComponent(
+        songName
+      )}`;
       console.log(`Fetching from: ${searchUrl}`);
-      
+
       // Use fetch with appropriate headers to mimic a browser
       const searchResponse = await fetch(searchUrl, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Accept': 'text/html,application/xhtml+xml,application/xml',
-          'User-Agent': 'Mozilla/5.0 Chrome Extension',
-          'Origin': 'chrome-extension://'
+          Accept: "text/html,application/xhtml+xml,application/xml",
+          "User-Agent": "Mozilla/5.0 Chrome Extension",
+          Origin: "chrome-extension://",
         },
-        mode: 'cors'
+        mode: "cors",
       });
-      
+
       if (!searchResponse.ok) {
-        throw new Error(`Failed to fetch search results: ${searchResponse.status}`);
+        throw new Error(
+          `Failed to fetch search results: ${searchResponse.status}`
+        );
       }
-      
+
       const searchHtml = await searchResponse.text();
 
       // Parse the search results
@@ -181,8 +181,6 @@ class ApiService {
           complete: false,
           basicInfo: {
             title: songName,
-            musicDirector: "Unknown",
-            singers: ["Unknown"],
             releaseYear: "Unknown",
             album: "Unknown",
           },
@@ -206,19 +204,19 @@ class ApiService {
 
       // Step 2: Get the song facts page
       const factsResponse = await fetch(songFactsUrl, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Accept': 'text/html,application/xhtml+xml,application/xml',
-          'User-Agent': 'Mozilla/5.0 Chrome Extension',
-          'Origin': 'chrome-extension://'
+          Accept: "text/html,application/xhtml+xml,application/xml",
+          "User-Agent": "Mozilla/5.0 Chrome Extension",
+          Origin: "chrome-extension://",
         },
-        mode: 'cors'
+        mode: "cors",
       });
-      
+
       if (!factsResponse.ok) {
         throw new Error(`Failed to fetch song facts: ${factsResponse.status}`);
       }
-      
+
       const factsHtml = await factsResponse.text();
 
       // Parse the facts page
@@ -248,8 +246,6 @@ class ApiService {
         complete: false,
         basicInfo: {
           title: songName,
-          musicDirector: "Unknown",
-          singers: ["Unknown"],
           releaseYear: "Unknown",
           album: "Unknown",
         },
@@ -276,8 +272,6 @@ class ApiService {
       // Default values
       const info = {
         title: songTitle,
-        musicDirector: "Unknown",
-        singers: ["Unknown"],
         releaseYear: "Unknown",
         album: "Unknown",
       };
@@ -285,14 +279,6 @@ class ApiService {
       // Look for song information section
       const songInfoSection = doc.querySelector(".song-info");
       if (songInfoSection) {
-        // Try to extract artist/singer
-        const artistElement = songInfoSection.querySelector(
-          'a[href^="/artist/"]'
-        );
-        if (artistElement) {
-          info.singers = [artistElement.textContent.trim()];
-        }
-
         // Try to extract release year
         const yearMatch = songInfoSection.textContent.match(/\b(19|20)\d{2}\b/);
         if (yearMatch) {
@@ -308,30 +294,16 @@ class ApiService {
       }
 
       // If no song info section, try alternative approaches
-      if (info.singers[0] === "Unknown") {
-        // Try to find artist in the header or title
+      if (info.releaseYear === "Unknown") {
+        // Try to find release year in the header or title
         const header = doc.querySelector("h1");
         if (header) {
           const headerText = header.textContent.trim();
           // Format is often "Song Title by Artist"
-          const byMatch = headerText.match(/by\s+(.+)$/i);
-          if (byMatch && byMatch[1]) {
-            info.singers = [byMatch[1].trim()];
+          const yearMatch = headerText.match(/Released:\s*(\d{4})/);
+          if (yearMatch && yearMatch[1]) {
+            info.releaseYear = yearMatch[1];
           }
-        }
-      }
-
-      // Look for composer/music director in the facts
-      const composerRegex = /(?:written|composed|produced) by ([^.]+)/i;
-      const allText = doc.body.textContent;
-      const composerMatch = allText.match(composerRegex);
-
-      if (composerMatch && composerMatch[1]) {
-        info.musicDirector = composerMatch[1].trim();
-      } else {
-        // If we found a singer but no music director, use the singer as a fallback
-        if (info.singers[0] !== "Unknown" && info.musicDirector === "Unknown") {
-          info.musicDirector = info.singers[0];
         }
       }
 
@@ -340,8 +312,6 @@ class ApiService {
       console.error("Error extracting basic info from SongFacts:", error);
       return {
         title: songTitle,
-        musicDirector: "Unknown",
-        singers: ["Unknown"],
         releaseYear: "Unknown",
         album: "Unknown",
       };
@@ -357,17 +327,18 @@ class ApiService {
     try {
       // Initialize an empty array for facts
       const facts = [];
-      
+
       console.log("Extracting facts from SongFacts page");
 
       // Try multiple approaches to find facts
-      
+
       // Approach 1: Find the songfacts section by heading
       let foundFacts = false;
       const headings = Array.from(doc.querySelectorAll("h1, h2, h3, h4"));
       const songfactsSection = headings.find(
-        (h) => h.textContent.trim().toLowerCase().includes("songfact") || 
-               h.textContent.trim().toLowerCase().includes("song fact")
+        (h) =>
+          h.textContent.trim().toLowerCase().includes("songfact") ||
+          h.textContent.trim().toLowerCase().includes("song fact")
       );
 
       if (songfactsSection) {
@@ -407,12 +378,14 @@ class ApiService {
             const paragraphText = paragraph.textContent.trim();
             if (paragraphText && paragraphText.length > 30) {
               // Skip paragraphs that look like metadata or navigation
-              if (paragraphText.toLowerCase().includes("copyright") || 
-                  paragraphText.toLowerCase().includes("all rights reserved") ||
-                  paragraphText.toLowerCase().includes("privacy policy")) {
+              if (
+                paragraphText.toLowerCase().includes("copyright") ||
+                paragraphText.toLowerCase().includes("all rights reserved") ||
+                paragraphText.toLowerCase().includes("privacy policy")
+              ) {
                 return;
               }
-              
+
               // Split paragraphs into sentences for better readability
               const sentences = paragraphText.split(/\.\s+/);
               sentences.forEach((sentence) => {
@@ -434,12 +407,14 @@ class ApiService {
           const paragraphText = allParagraphs[i].textContent.trim();
           if (paragraphText && paragraphText.length > 30) {
             // Skip paragraphs that look like metadata or navigation
-            if (paragraphText.toLowerCase().includes("copyright") || 
-                paragraphText.toLowerCase().includes("all rights reserved") ||
-                paragraphText.toLowerCase().includes("privacy policy")) {
+            if (
+              paragraphText.toLowerCase().includes("copyright") ||
+              paragraphText.toLowerCase().includes("all rights reserved") ||
+              paragraphText.toLowerCase().includes("privacy policy")
+            ) {
               continue;
             }
-            
+
             facts.push(paragraphText);
             foundFacts = true;
           }
@@ -467,9 +442,10 @@ class ApiService {
     let currentElement = section.nextElementSibling;
 
     // Process elements until we hit another heading or run out of siblings
-    while (currentElement && 
-           !['H1', 'H2', 'H3', 'H4'].includes(currentElement.tagName)) {
-      
+    while (
+      currentElement &&
+      !["H1", "H2", "H3", "H4"].includes(currentElement.tagName)
+    ) {
       // Extract from lists
       if (currentElement.tagName === "UL" || currentElement.tagName === "OL") {
         const listItems = currentElement.querySelectorAll("li");
@@ -480,18 +456,20 @@ class ApiService {
             foundFacts = true;
           }
         });
-      } 
+      }
       // Extract from paragraphs
       else if (currentElement.tagName === "P") {
         const paragraphText = currentElement.textContent.trim();
         if (paragraphText && paragraphText.length > 20) {
           // Skip paragraphs that look like metadata
-          if (paragraphText.toLowerCase().includes("copyright") || 
-              paragraphText.toLowerCase().includes("all rights reserved")) {
+          if (
+            paragraphText.toLowerCase().includes("copyright") ||
+            paragraphText.toLowerCase().includes("all rights reserved")
+          ) {
             currentElement = currentElement.nextElementSibling;
             continue;
           }
-          
+
           // Split paragraphs into sentences
           const sentences = paragraphText.split(/\.\s+/);
           sentences.forEach((sentence) => {
@@ -507,8 +485,11 @@ class ApiService {
         // Only process divs that don't have complex nested structures
         if (!currentElement.querySelector("div, ul, ol, table")) {
           const divText = currentElement.textContent.trim();
-          if (divText && divText.length > 30 && 
-              !divText.toLowerCase().includes("copyright")) {
+          if (
+            divText &&
+            divText.length > 30 &&
+            !divText.toLowerCase().includes("copyright")
+          ) {
             facts.push(divText);
             foundFacts = true;
           }

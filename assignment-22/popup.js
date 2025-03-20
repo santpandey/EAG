@@ -7,12 +7,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const errorMessage = document.getElementById("errorMessage");
   const artistsInfo = document.getElementById("artistsInfo");
   const songFacts = document.getElementById("songFacts");
-  const instrumentsInfo = document.getElementById("instrumentsInfo");
-  const imageContainer = document.getElementById("imageContainer");
-  const songImage = document.getElementById("songImage");
-  let downloadButton = document.getElementById("downloadButton");
-  const imageLoading = document.getElementById("imageLoading");
-  const imageError = document.getElementById("imageError");
   const sourcesContainer = document.getElementById("sources");
 
   // Event listeners
@@ -41,13 +35,6 @@ document.addEventListener("DOMContentLoaded", function () {
       const songData = await ApiService.searchSong(songName);
 
       if (songData.success) {
-        // Generate an image for the song
-        const imageUrl = await ApiService.generateImage(
-          songName,
-          songData.basicInfo
-        );
-        songData.imageUrl = imageUrl;
-
         displayResults(songData);
       } else {
         showError();
@@ -74,16 +61,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // Display song facts
     displaySongFacts(songData.facts);
 
-    // Display instruments used
-    displayInstrumentsInfo(songData.instruments);
-
-    // Display image if available
-    if (songData.imageUrl) {
-      displaySongImage(songData.imageUrl);
-    } else {
-      imageError.classList.remove("hidden");
-    }
-
     // Display sources
     displaySources(songData.sources);
   }
@@ -91,24 +68,6 @@ document.addEventListener("DOMContentLoaded", function () {
   // Display artists information
   function displayArtistsInfo(basicInfo) {
     artistsInfo.innerHTML = "";
-
-    // Music Director
-    const directorDiv = document.createElement("div");
-    directorDiv.className = "artist-info";
-    directorDiv.innerHTML = `
-      <span class="artist-type">Music Director:</span>
-      <span class="artist-name">${basicInfo.musicDirector}</span>
-    `;
-    artistsInfo.appendChild(directorDiv);
-
-    // Singers
-    const singersDiv = document.createElement("div");
-    singersDiv.className = "artist-info";
-    singersDiv.innerHTML = `
-      <span class="artist-type">Singer(s):</span>
-      <span class="artist-name">${basicInfo.singers.join(", ")}</span>
-    `;
-    artistsInfo.appendChild(singersDiv);
 
     // Album & Year
     if (basicInfo.album !== "Unknown" || basicInfo.releaseYear !== "Unknown") {
@@ -143,34 +102,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Display instruments information
-  function displayInstrumentsInfo(instruments) {
-    instrumentsInfo.innerHTML = "";
-
-    instruments.forEach((instrument) => {
-      const instrumentDiv = document.createElement("div");
-      instrumentDiv.className = "instrument-item";
-      instrumentDiv.textContent = instrument;
-      instrumentsInfo.appendChild(instrumentDiv);
-    });
-  }
-
-  // Display song image
-  function displaySongImage(imageUrl) {
-    if (imageUrl) {
-      songImage.src = imageUrl;
-      imageContainer.classList.remove("hidden");
-      downloadButton.classList.remove("hidden");
-
-      // Set up download button
-      downloadButton.addEventListener("click", function () {
-        downloadImage(imageUrl, "song-visualization.png");
-      });
-    } else {
-      imageError.classList.remove("hidden");
-    }
-  }
-
   // Display sources
   function displaySources(sourcesList) {
     sourcesContainer.innerHTML = "";
@@ -181,19 +112,10 @@ document.addEventListener("DOMContentLoaded", function () {
         sourceLink.href = source.url;
         sourceLink.textContent = source.name;
         sourceLink.target = "_blank";
+        sourceLink.className = "source-link";
         sourcesContainer.appendChild(sourceLink);
       });
     }
-  }
-
-  // Download image
-  function downloadImage(url, filename) {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
   }
 
   // Reset UI
@@ -202,17 +124,7 @@ document.addEventListener("DOMContentLoaded", function () {
     errorMessage.classList.add("hidden");
     artistsInfo.innerHTML = "";
     songFacts.innerHTML = "";
-    instrumentsInfo.innerHTML = "";
-    imageContainer.classList.add("hidden");
-    downloadButton.classList.add("hidden");
-    imageLoading.classList.add("hidden");
-    imageError.classList.add("hidden");
     sourcesContainer.innerHTML = "";
-
-    // Remove any existing event listeners on the download button
-    downloadButton.replaceWith(downloadButton.cloneNode(true));
-    // Re-assign the cloned button
-    downloadButton = document.getElementById("downloadButton");
   }
 
   // Show loading
