@@ -1,4 +1,1 @@
-.venv/
-.env
-__pycache__/
-assignment33/.venv/
+/assignment33/.venv/
